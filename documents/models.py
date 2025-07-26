@@ -58,7 +58,13 @@ class RoutineEvent(models.Model):
     title = models.CharField(max_length=255)
     date = models.DateField()
     description = models.TextField(blank=True)
+    # New fields for enhanced event details
+    time = models.CharField(max_length=50, blank=True)  # e.g., "1.20 PM"
+    place = models.CharField(max_length=255, blank=True)  # e.g., "Room: 201= 121-135"
+    syllabus = models.TextField(blank=True)  # e.g., "Topic covered in class except ER Diagram and Transaction"
+    question_pattern = models.CharField(max_length=255, blank=True)  # e.g., "MCQ + এক কথায় উত্তর"
     created_at = models.DateTimeField(auto_now_add=True)
+    
     def __str__(self):
         return f"{self.title} ({self.event_type}) on {self.date}"
 

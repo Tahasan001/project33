@@ -719,17 +719,27 @@ class ExtractEventsFromImageView(APIView):
             genai.configure(api_key=settings.GEMINI_API_KEY)
             model = genai.GenerativeModel('gemini-2.5-flash')
             
-            # Enhanced prompt to extract both types of information
-            prompt = """Extract exam events from this image. 
+            # Enhanced prompt to extract comprehensive event information
+            prompt = """Extract exam events from this image with all available details. 
+            For each event, extract the following information if available:
+            
             If the image shows actual dates (like 23/07/2025), return in this format:
             Date: 23/07/2025
             Course: CSE 3101 (Database Systems)
+            Time: 1.20 PM
+            Place: Room: 201= 121-135
+            Syllabus: Topic covered in class except ER Diagram and Transaction
+            Question Pattern: MCQ + এক কথায় উত্তর
             
             If the image shows day names only (like Saturday, Sunday), return in this format:
             Day: Saturday
             Course: Database Quiz
+            Time: 1.20 PM
+            Place: Room: 203
+            Syllabus: Lab e ja korano hoyechilo
+            Question Pattern: MCQ + Written
             
-            Extract the date or day name and course name for each exam."""
+            Extract ALL available information for each exam event."""
             
             response = model.generate_content([prompt, {"mime_type": image_file.content_type, "data": image_base64}])
             
@@ -745,6 +755,10 @@ class ExtractEventsFromImageView(APIView):
             current_date = None
             current_day = None
             current_course = None
+            current_time = None
+            current_place = None
+            current_syllabus = None
+            current_question_pattern = None
             
             for line in lines:
                 line = line.strip()
@@ -762,7 +776,16 @@ class ExtractEventsFromImageView(APIView):
                     current_date = None  # Clear date if we have day
                 elif line.startswith('Course:'):
                     current_course = line.replace('Course:', '').strip()
+                elif line.startswith('Time:'):
+                    current_time = line.replace('Time:', '').strip()
+                elif line.startswith('Place:'):
+                    current_place = line.replace('Place:', '').strip()
+                elif line.startswith('Syllabus:'):
+                    current_syllabus = line.replace('Syllabus:', '').strip()
+                elif line.startswith('Question Pattern:'):
+                    current_question_pattern = line.replace('Question Pattern:', '').strip()
                     
+                    # When we hit Question Pattern, it means we have all the info for one event
                     if current_course:
                         # Determine event type based on course name
                         course_lower = current_course.lower()
@@ -794,13 +817,30 @@ class ExtractEventsFromImageView(APIView):
                             logger.info(f"Date object: {date_obj}, Today: {date.today()}")
                             logger.info(f"Is upcoming: {date_obj >= date.today()}")
                             
+                            # Build description with all available details
+                            description_parts = []
+                            if current_time:
+                                description_parts.append(f"Time: {current_time}")
+                            if current_place:
+                                description_parts.append(f"Place: {current_place}")
+                            if current_syllabus:
+                                description_parts.append(f"Syllabus: {current_syllabus}")
+                            if current_question_pattern:
+                                description_parts.append(f"Question Pattern: {current_question_pattern}")
+                            
+                            description = "\n".join(description_parts) if description_parts else current_course
+                            
                             event = RoutineEvent.objects.create(
                                 user=request.user,
                                 document=None,  # We don't have a document for image uploads
                                 event_type=event_type,
                                 title=f"{current_course} - {event_type}",
                                 date=date_obj,
-                                description=current_course
+                                description=description,
+                                time=current_time or "",
+                                place=current_place or "",
+                                syllabus=current_syllabus or "",
+                                question_pattern=current_question_pattern or ""
                             )
                             
                             events.append({
@@ -808,12 +848,21 @@ class ExtractEventsFromImageView(APIView):
                                 'title': event.title,
                                 'date': final_date,
                                 'course_name': current_course,
-                                'event_type': event_type
+                                'event_type': event_type,
+                                'time': current_time,
+                                'place': current_place,
+                                'syllabus': current_syllabus,
+                                'question_pattern': current_question_pattern
                             })
                         
+                        # Reset all variables for next event
                         current_date = None
                         current_day = None
                         current_course = None
+                        current_time = None
+                        current_place = None
+                        current_syllabus = None
+                        current_question_pattern = None
             
             if events:
                 return Response({
