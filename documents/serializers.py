@@ -2,9 +2,14 @@ from rest_framework import serializers
 from .models import Document, Summary, Question, Flashcard, Progress, RoutineEvent, ExamPreparation
 
 class DocumentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    
+    def get_file_url(self, obj):
+        return obj.file.url if obj.file else None
+    
     class Meta:
         model = Document
-        fields = ['id', 'name', 'doc_type', 'uploaded_at', 'processed', 'file', 'exam_preparation']
+        fields = ['id', 'name', 'doc_type', 'uploaded_at', 'processed', 'file', 'file_url', 'exam_preparation']
 
 class SummarySerializer(serializers.ModelSerializer):
     class Meta:

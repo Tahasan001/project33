@@ -511,6 +511,15 @@ function studyFlashcards(docId) {
         });
 }
 
+function readDocument(fileUrl) {
+    if (fileUrl) {
+        // Open the PDF in a new tab
+        window.open(fileUrl, '_blank');
+    } else {
+        showAlert('Document file not available for reading.', 'warning');
+    }
+}
+
 function checkAnswer(questionIndex, selectedAnswer, correctAnswer) {
     const feedbackDiv = document.getElementById(`feedback_${questionIndex}`);
     const answerDiv = document.getElementById(`answer_${questionIndex}`);
@@ -731,6 +740,9 @@ function createDocumentCard(doc) {
                     <small class="text-muted">${doc.doc_type.toUpperCase()} • Uploaded ${new Date(doc.uploaded_at).toLocaleDateString()}</small>
                 </div>
                 <div>
+                    <button class="btn btn-sm btn-outline-success me-2" onclick="readDocument('${doc.file_url}')" title="Read PDF">
+                        <i class="fas fa-eye"></i> Read
+                    </button>
                     <button class="btn btn-sm btn-outline-primary me-2" onclick="openDocumentActions(${doc.id})">
                         <i class="fas fa-magic"></i> Actions
                     </button>
