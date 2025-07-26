@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Exam Preparations - ExamAssist{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'dashboard' %}">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'exam-preparation-list' %}">
+                            <i class="fas fa-book"></i> Exam Prep
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Exam Preparations</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshPreparations()">Refresh</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Preparations -->
+            <div class="row">
+                <div class="col-12">
+                    <h4>All Preparations</h4>
+                    <div id="allPreparations">
+                        <!-- All preparations will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function deleteExamPreparation(prepId) {
+    if (confirm('Are you sure you want to delete this exam preparation? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`/documents/preparations/${prepId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            if (response.ok) {
+                showAlert('Exam preparation deleted successfully!', 'success');
+                loadPreparations(); // Refresh the list
+            } else {
+                const data = await response.json();
+                showAlert(data.error || 'Failed to delete exam preparation', 'danger');
+            }
+        } catch (error) {
+            console.error('Error deleting preparation:', error);
+            showAlert('Failed to delete exam preparation', 'danger');
+        }
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.insertBefore(alertDiv, document.body.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+async function loadPreparations() {
+    fetch('/documents/preparations/')
+        .then(response => response.json())
+        .then(data => {
+            // Show all preparations
+            const allContainer = document.getElementById('allPreparations');
+            
+            if (data.length === 0) {
+                allContainer.innerHTML = '<div class="col-12"><p class="text-muted">No preparations created yet.</p></div>';
+                return;
+            }
+            
+            let allHtml = '<div class="row">';
+            data.forEach(prep => {
+                allHtml += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 position-relative feature-card">
+                            <button class="btn btn-sm position-absolute top-0 end-0 m-2" 
+                                    style="background: none; border: none; color: var(--danger-color); z-index: 10;" 
+                                    onclick="deleteExamPreparation(${prep.id})" 
+                                    title="Delete this preparation">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="card-body d-flex flex-column">
+                                <h6 class="card-title text-dark mb-3">${prep.title}</h6>
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <small class="text-muted">Docs</small>
+                                        <div class="fw-bold text-dark">${prep.documents_count}</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted">Questions</small>
+                                        <div class="fw-bold text-dark">${prep.total_questions}</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted">Cards</small>
+                                        <div class="fw-bold text-dark">${prep.total_flashcards}</div>
+                                    </div>
+                                </div>
+                                <a href="/exam-prep/${prep.id}/" class="btn btn-outline-primary mt-auto">Open</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            allHtml += '</div>';
+            allContainer.innerHTML = allHtml;
+        })
+        .catch(error => {
+            console.error('Error loading preparations:', error);
+        });
+}
+
+function refreshPreparations() {
+    loadPreparations();
+}
+
+// Load preparations on page load
+loadPreparations();
+</script>
+{% endblock %} 

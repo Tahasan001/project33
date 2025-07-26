@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ExamAssist - Statistics{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stats-card {
+        border: none;
+        box-shadow: 0 2px 8px rgba(44, 62, 80, 0.1);
+        transition: all 0.3s ease;
+        border-radius: 10px;
+        background-color: #ffffff;
+    }
+    .stats-card:hover {
+        box-shadow: 0 4px 16px rgba(44, 62, 80, 0.15);
+        transform: translateY(-2px);
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--accent-color);
+    }
+    .stat-label {
+        color: var(--text-light);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 20px;
+    }
+    .activity-item {
+        padding: 10px;
+        border-left: 3px solid var(--accent-color);
+        margin-bottom: 10px;
+        background: var(--light-grey);
+        border-radius: 0 5px 5px 0;
+    }
+    .metric-card {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .metric-number {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .prep-stats-card {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .prep-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px 10px 0 0;
+    }
+    .prep-body {
+        padding: 20px;
+    }
+    .prep-mini-stats {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+    .prep-mini-stat {
+        text-align: center;
+        flex: 1;
+        margin: 0 10px;
+    }
+    .prep-mini-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    .prep-mini-label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    .prep-progress {
+        margin-top: 15px;
+    }
+    .prep-progress-bar {
+        height: 8px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .prep-progress-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-chart-bar me-2"></i>Study Statistics
+            </h2>
+        </div>
+    </div>
+
+    <!-- Overview Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <div class="stat-number">{{ total_preparations }}</div>
+                    <div class="stat-label">Exam Preparations</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <div class="stat-number">{{ total_documents }}</div>
+                    <div class="stat-label">Documents Uploaded</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <div class="stat-number">{{ total_questions }}</div>
+                    <div class="stat-label">Questions Generated</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <div class="stat-number">{{ total_flashcards }}</div>
+                    <div class="stat-label">Flashcards Created</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress and Recent Activity -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card stats-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Overall Progress</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="position-relative d-inline-block">
+                        <svg class="progress-ring" width="120" height="120">
+                            <circle class="progress-ring-circle-bg" stroke="#e9ecef" stroke-width="8" fill="transparent" r="52" cx="60" cy="60"/>
+                            <circle class="progress-ring-circle" stroke="#667eea" stroke-width="8" fill="transparent" r="52" cx="60" cy="60" 
+                                    stroke-dasharray="{{ progress_percentage|floatformat:1|add:0 }} 100"/>
+                        </svg>
+                        <div class="position-absolute top-50 start-50 translate-middle">
+                            <div class="h4 mb-0">{{ progress_percentage|floatformat:1 }}%</div>
+                            <small class="text-muted">Complete</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card stats-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Activity (30 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-file-upload me-2"></i>Documents Uploaded</span>
+                            <strong>{{ recent_documents }}</strong>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-question-circle me-2"></i>Questions Generated</span>
+                            <strong>{{ recent_questions }}</strong>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-sticky-note me-2"></i>Flashcards Created</span>
+                            <strong>{{ recent_flashcards }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Exam Preparation Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3"><i class="fas fa-graduation-cap me-2"></i>Individual Exam Preparation Statistics</h4>
+        </div>
+    </div>
+
+    {% for prep_stat in prep_stats %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="prep-stats-card">
+                <div class="prep-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-book me-2"></i>{{ prep_stat.preparation.title }}
+                        <small class="float-end">{{ prep_stat.created_at|date:"M d, Y" }}</small>
+                    </h5>
+                </div>
+                <div class="prep-body">
+                    <div class="prep-mini-stats">
+                        <div class="prep-mini-stat">
+                            <div class="prep-mini-number">{{ prep_stat.documents_count }}</div>
+                            <div class="prep-mini-label">Documents</div>
+                        </div>
+                        <div class="prep-mini-stat">
+                            <div class="prep-mini-number">{{ prep_stat.questions_count }}</div>
+                            <div class="prep-mini-label">Questions</div>
+                        </div>
+                        <div class="prep-mini-stat">
+                            <div class="prep-mini-number">{{ prep_stat.flashcards_count }}</div>
+                            <div class="prep-mini-label">Flashcards</div>
+                        </div>
+                        <div class="prep-mini-stat">
+                            <div class="prep-mini-number">{{ prep_stat.progress_percentage|floatformat:0 }}%</div>
+                            <div class="prep-mini-label">Progress</div>
+                        </div>
+                    </div>
+                    
+                    <div class="prep-progress">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Study Progress</span>
+                            <span>{{ prep_stat.progress_percentage|floatformat:0 }}%</span>
+                        </div>
+                        <div class="prep-progress-bar">
+                            <div class="prep-progress-fill" style="width: {{ prep_stat.progress_percentage|floatformat:0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card stats-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Monthly Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyActivityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Content Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="contentDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preparation Comparison -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card stats-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Exam Preparation Comparison</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="preparationComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Monthly Activity Chart
+const monthlyCtx = document.getElementById('monthlyActivityChart').getContext('2d');
+const monthlyData = {{ monthly_data|safe }};
+const monthlyChart = new Chart(monthlyCtx, {
+    type: 'line',
+    data: {
+        labels: monthlyData.map(item => item.month),
+        datasets: [{
+            label: 'Documents',
+            data: monthlyData.map(item => item.documents),
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.4
+        }, {
+            label: 'Questions',
+            data: monthlyData.map(item => item.questions),
+            borderColor: '#27ae60',
+            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+            tension: 0.4
+        }, {
+            label: 'Flashcards',
+            data: monthlyData.map(item => item.flashcards),
+            borderColor: '#f39c12',
+            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Content Distribution Chart
+const contentCtx = document.getElementById('contentDistributionChart').getContext('2d');
+const contentChart = new Chart(contentCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Documents', 'Questions', 'Flashcards'],
+        datasets: [{
+            data: [{{ total_documents }}, {{ total_questions }}, {{ total_flashcards }}],
+            backgroundColor: [
+                '#3498db',
+                '#27ae60',
+                '#f39c12'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            }
+        }
+    }
+});
+
+// Preparation Comparison Chart
+const comparisonCtx = document.getElementById('preparationComparisonChart').getContext('2d');
+const chartData = {{ chart_data|safe }};
+const comparisonChart = new Chart(comparisonCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.preparation_names,
+        datasets: [{
+            label: 'Documents',
+            data: chartData.document_counts,
+            backgroundColor: '#3498db',
+        }, {
+            label: 'Questions',
+            data: chartData.question_counts,
+            backgroundColor: '#27ae60',
+        }, {
+            label: 'Flashcards',
+            data: chartData.flashcard_counts,
+            backgroundColor: '#f39c12',
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Update progress ring
+document.addEventListener('DOMContentLoaded', function() {
+    const progressPercentage = {{ progress_percentage|floatformat:1|add:0 }};
+    const circle = document.querySelector('.progress-ring-circle');
+    const radius = circle.r.baseVal.value;
+    const circumference = radius * 2 * Math.PI;
+    
+    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    circle.style.strokeDashoffset = circumference;
+    
+    const offset = circumference - (progressPercentage / 100) * circumference;
+    circle.style.strokeDashoffset = offset;
+});
+</script>
+{% endblock %} 

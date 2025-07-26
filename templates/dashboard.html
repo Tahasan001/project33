@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}AI Study Assistant - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <div class="col-12">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Dashboard</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="scrollToEvents()">Add Events</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllEvents()">Clear Events</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Exam Preps</h5>
+                            <p class="card-text display-6" id="totalEvents">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">All Events</h5>
+                            <p class="card-text display-6" id="upcomingEvents">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Exams</h5>
+                            <p class="card-text display-6" id="totalExams">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">CTs</h5>
+                            <p class="card-text display-6" id="totalCTs">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Row -->
+            <div class="row mb-4">
+                <!-- Left Side Column -->
+                <div class="col-md-8">
+                    <!-- Recent Exam Preparations Section -->
+                    <div class="card feature-card h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-book me-2"></i>Recent Exam Preparations</h5>
+                            <a href="{% url 'exam-preparation-list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+                        <div class="card-body">
+                            <div id="recentPreparations">
+                                <!-- Recent preparations will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side Column -->
+                <div class="col-md-4">
+                    <!-- Add Events Section -->
+                    <div class="card feature-card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Add Events</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="upload-area" id="eventUploadArea" style="padding: 20px;">
+                                <i class="fas fa-image fa-2x mb-2 text-muted"></i>
+                                <h6>Upload Exam Schedule</h6>
+                                <input type="file" id="eventFileInput" accept=".jpg,.jpeg,.png" style="display: none;">
+                                <button class="btn btn-primary btn-sm" onclick="document.getElementById('eventFileInput').click()">
+                                    <i class="fas fa-upload me-1"></i>Upload
+                                </button>
+                            </div>
+                            <div id="eventUploadStatus" class="mt-3" style="display: none;">
+                                <!-- Upload status will be shown here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Events -->
+                    <div class="card feature-card mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Upcoming Events</h5>
+                            <button class="btn btn-sm text-muted" style="background: none; border: none; padding: 0;" onclick="clearAllEvents()" title="Clear all events">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="eventsList">
+                                <!-- Events will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Study Stats -->
+                    <div class="card feature-card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Study Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h4 id="totalDocs">0</h4>
+                                    <small class="text-muted">Documents</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 id="totalQuestions">0</h4>
+                                    <small class="text-muted">Questions</small>
+                                </div>
+                            </div>
+                            <div class="row text-center mt-3">
+                                <div class="col-6">
+                                    <h4 id="totalFlashcards">0</h4>
+                                    <small class="text-muted">Flashcards</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 id="avgProgress">0%</h4>
+                                    <small class="text-muted">Avg Progress</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+        function loadStats() {
+            fetch('/documents/stats/')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalEvents').textContent = data.exam_preparations_count || 0;
+                    document.getElementById('upcomingEvents').textContent = data.upcoming_events_count || 0;
+                    document.getElementById('totalExams').textContent = data.total_exams || 0;
+                    document.getElementById('totalCTs').textContent = data.total_cts || 0;
+                })
+                .catch(error => {
+                    console.error('Error loading stats:', error);
+                });
+        }
+
+        function loadEvents() {
+            fetch('/documents/stats/')
+                .then(response => response.json())
+                .then(data => {
+                    const eventsContainer = document.getElementById('eventsList');
+                    eventsContainer.innerHTML = '';
+                    
+                    if (data.recent_events && data.recent_events.length > 0) {
+                        data.recent_events.forEach(event => {
+                            const badgeClass = event.event_type === 'Exam' ? 'bg-success' : 
+                                            event.event_type === 'CT' ? 'bg-warning' : 'bg-info';
+                            const displayType = event.event_type === 'Quiz' ? 'Quiz' : event.event_type;
+                            
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = 'card mb-3';
+                            eventDiv.innerHTML = `
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="card-title">${event.title}</h6>
+                                            <p class="card-text text-muted">${event.date}</p>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge ${badgeClass} me-2">${displayType}</span>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="createExamPreparation(${event.id})" title="Create preparation page">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            eventsContainer.appendChild(eventDiv);
+                        });
+                    } else {
+                        eventsContainer.innerHTML = `
+                            <div class="text-center py-4">
+                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No upcoming events</h5>
+                                <p class="text-muted">Upload an exam schedule image to get started</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading events:', error);
+                });
+        }
+
+        async function createExamPreparation(eventId) {
+            try {
+                const response = await fetch('/documents/preparations/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ event_id: eventId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Exam preparation page created successfully!', 'success');
+                    // Redirect to the preparation page
+                    window.location.href = `/exam-prep/${data.preparation_id}/`;
+                } else {
+                    showAlert('Failed to create preparation page: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                console.error('Error creating exam preparation:', error);
+                showAlert('Failed to create preparation page!', 'danger');
+            }
+        }
+
+        async function loadRecentPreparations() {
+            try {
+                const response = await fetch('/documents/preparations/');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const recentPreparations = document.getElementById('recentPreparations');
+                    
+                    if (data && data.length > 0) {
+                        const recentPreps = data.slice(0, 5); // Show only 5 most recent
+                        recentPreparations.innerHTML = recentPreps.map(prep => `
+                            <div class="card mb-2">
+                                <div class="card-body p-3">
+                                    <h6 class="card-title mb-1">${prep.title}</h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted">Docs</small>
+                                            <div class="fw-bold">${prep.documents_count}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Questions</small>
+                                            <div class="fw-bold">${prep.total_questions}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Cards</small>
+                                            <div class="fw-bold">${prep.total_flashcards}</div>
+                                        </div>
+                                    </div>
+                                    <a href="/exam-prep/${prep.id}/" class="btn btn-sm btn-primary w-100 mt-2">Open</a>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        recentPreparations.innerHTML = '<p class="text-muted">No exam preparations yet</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading recent preparations:', error);
+            }
+        }
+
+        function scrollToEvents() {
+            document.getElementById('imageUploadForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearAllEvents() {
+            if (confirm('Are you sure you want to clear all upcoming events?')) {
+                fetch('/documents/clear-events/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('All upcoming events cleared!', 'success');
+                        loadEvents(); // Reload events to show the empty state
+                    } else {
+                        showAlert('Failed to clear events!', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing events:', error);
+                    showAlert('Failed to clear events!', 'danger');
+                });
+            }
+        }
+
+        // Event upload area functionality
+        const eventUploadArea = document.getElementById('eventUploadArea');
+        const eventFileInput = document.getElementById('eventFileInput');
+        const eventUploadStatus = document.getElementById('eventUploadStatus');
+
+        // File input change handler
+        eventFileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                handleEventFileUpload(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop functionality
+        eventUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            eventUploadArea.classList.add('dragover');
+        });
+
+        eventUploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            eventUploadArea.classList.remove('dragover');
+        });
+
+        eventUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            eventUploadArea.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                handleEventFileUpload(files[0]);
+            }
+        });
+
+        // Click to upload
+        eventUploadArea.addEventListener('click', function(e) {
+            if (e.target === eventUploadArea || e.target.closest('.upload-area')) {
+                eventFileInput.click();
+            }
+        });
+
+        async function handleEventFileUpload(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            // Show upload status
+            eventUploadStatus.style.display = 'block';
+            eventUploadStatus.innerHTML = `
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                <small class="text-muted">Processing image...</small>
+            `;
+            
+            try {
+                const response = await fetch('/documents/extract-events/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Response data:', data); // Debug log
+                console.log('Response status:', response.status); // Debug log
+                console.log('Response ok:', response.ok); // Debug log
+                console.log('Data success:', data.success); // Debug log
+                console.log('Data events:', data.events); // Debug log
+                console.log('Data message:', data.message); // Debug log
+                
+                if (response.ok && data.success) {
+                    showAlert('Events extracted successfully!', 'success');
+                    eventFileInput.value = '';
+                    loadEvents(); // Reload events
+                    loadStats(); // Reload stats
+                } else {
+                    const errorMessage = data.error || data.message || 'Unknown error occurred';
+                    console.log('Error message:', errorMessage); // Debug log
+                    showAlert('Failed to extract events: ' + errorMessage, 'danger');
+                }
+            } catch (error) {
+                console.error('Error extracting events:', error);
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+                console.error('Response text (if available):', error.responseText); // Debug log
+                let errorMessage = 'Failed to extract events!';
+                
+                // Try to get more specific error information
+                if (error.name === 'SyntaxError') {
+                    errorMessage = 'Invalid response from server';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showAlert(errorMessage, 'danger');
+            } finally {
+                eventUploadStatus.style.display = 'none';
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            loadEvents();
+            loadRecentPreparations();
+        });
+    </script>
+{% endblock %} 

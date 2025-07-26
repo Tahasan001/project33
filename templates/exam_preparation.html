@@ -1,0 +1,761 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ preparation.title }} - ExamAssist{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'dashboard' %}">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'exam-preparation-list' %}">
+                            <i class="fas fa-book"></i> Exam Prep
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">{{ preparation.title }}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showUploadSection()">Upload</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showDocumentsSection()">Documents</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteExamPreparation()" title="Delete this exam preparation">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Documents</h5>
+                            <p class="card-text display-6" id="totalDocuments">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Questions</h5>
+                            <p class="card-text display-6" id="totalQuestions">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Flashcards</h5>
+                            <p class="card-text display-6" id="totalFlashcards">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Progress</h5>
+                            <p class="card-text display-6" id="progressPercentage">0%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Assistant Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card feature-card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Study Assistant</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-primary">
+                                        <div class="card-body d-flex flex-column p-3">
+                                            <h6 class="card-title text-primary mb-2"><i class="fas fa-upload me-2"></i>Upload Materials</h6>
+                                            <form id="uploadForm" enctype="multipart/form-data" class="flex-grow-1 d-flex flex-column">
+                                                <div class="mb-2">
+                                                    <input type="file" class="form-control form-control-sm" id="fileInput" name="file" multiple>
+                                                    <small class="text-muted">PDF, DOCX, TXT, Images</small>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary btn-sm mt-auto">Upload</button>
+                                            </form>
+                                            <div id="uploadProgress" class="mt-2" style="display: none;">
+                                                <div class="progress progress-sm">
+                                                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-success">
+                                        <div class="card-body d-flex flex-column p-3">
+                                            <h6 class="card-title text-success mb-2"><i class="fas fa-comments me-2"></i>AI Assistant</h6>
+                                            <div id="chatContainer" class="flex-grow-1" style="height: 150px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 5px; padding: 8px; margin-bottom: 8px; background-color: #f8f9fa;">
+                                                <div class="text-muted small">Ask about your study materials...</div>
+                                            </div>
+                                            <div class="input-group input-group-sm mt-auto">
+                                                <input type="text" class="form-control" id="chatInput" placeholder="Type your question...">
+                                                <button class="btn btn-success" type="button" onclick="sendMessage()">Send</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Your Documents Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card feature-card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Your Documents</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="documentsList">
+                                <!-- Documents will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Actions Modal -->
+<div class="modal fade" id="documentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">AI Document Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">Generate Summary</h6>
+                                <p class="card-text">Create a concise summary of the document</p>
+                                <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">Generate Questions</h6>
+                                <p class="card-text">Create practice questions from the document</p>
+                                <button class="btn btn-success" onclick="generateQuestions()">Generate Questions</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">Generate Flashcards</h6>
+                                <p class="card-text">Create flashcards for studying</p>
+                                <button class="btn btn-info" onclick="generateFlashcards()">Generate Flashcards</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Questions Modal -->
+<div class="modal fade" id="questionsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Practice Questions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="questionsContainer">
+                    <!-- Questions will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flashcards Modal -->
+<div class="modal fade" id="flashcardsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Study Flashcards</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="flashcardsContainer">
+                    <!-- Flashcards will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Get the preparation ID from the URL
+const currentPreparationId = {{ preparation.id }};
+
+// Alert function
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.insertBefore(alertDiv, document.body.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+async function deleteExamPreparation() {
+    if (confirm('Are you sure you want to delete this exam preparation? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`/documents/preparations/${currentPreparationId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                showAlert('Exam preparation deleted successfully!', 'success');
+                // Redirect to the exam preparation list after a short delay
+                setTimeout(() => {
+                    window.location.href = '/exam-prep/';
+                }, 1500);
+            } else {
+                const errorMessage = data.error || 'Failed to delete exam preparation';
+                showAlert(errorMessage, 'danger');
+            }
+        } catch (error) {
+            console.error('Error deleting exam preparation:', error);
+            showAlert('Failed to delete exam preparation!', 'danger');
+        }
+    }
+}
+
+let currentDocumentId = null;
+
+function showUploadSection() {
+    document.getElementById('uploadForm').style.display = 'block';
+}
+
+function showDocumentsSection() {
+    loadDocuments();
+}
+
+// Document actions
+function openDocumentActions(docId) {
+    currentDocumentId = docId;
+    new bootstrap.Modal(document.getElementById('documentModal')).show();
+}
+
+async function generateSummary() {
+    if (!currentDocumentId) return;
+    
+    try {
+        const response = await fetch(`/documents/summarize/${currentDocumentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Summary generated successfully!', 'success');
+        } else {
+            showAlert('Failed to generate summary: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        console.error('Error generating summary:', error);
+        showAlert('Failed to generate summary!', 'danger');
+    }
+}
+
+async function generateQuestions() {
+    if (!currentDocumentId) return;
+    
+    try {
+        const response = await fetch(`/documents/questions/${currentDocumentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.questions && data.questions.length > 0) {
+            showAlert(`Generated ${data.questions.length} questions successfully!`, 'success');
+        } else if (data.error) {
+            showAlert('Failed to generate questions: ' + data.error, 'danger');
+        } else {
+            showAlert('Failed to generate questions!', 'danger');
+        }
+    } catch (error) {
+        console.error('Error generating questions:', error);
+        showAlert('Failed to generate questions!', 'danger');
+    }
+}
+
+async function generateFlashcards() {
+    if (!currentDocumentId) return;
+    
+    try {
+        const response = await fetch(`/documents/flashcards/${currentDocumentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.flashcards && data.flashcards.length > 0) {
+            showAlert(`Generated ${data.flashcards.length} flashcards successfully!`, 'success');
+        } else if (data.error) {
+            showAlert('Failed to generate flashcards: ' + data.error, 'danger');
+        } else {
+            showAlert('Failed to generate flashcards!', 'danger');
+        }
+    } catch (error) {
+        console.error('Error generating flashcards:', error);
+        showAlert('Failed to generate flashcards!', 'danger');
+    }
+}
+
+function viewQuestions(docId) {
+    currentDocumentId = docId;
+    fetch(`/documents/all-questions/${docId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+            
+            if (data.questions.length > 0) {
+                data.questions.forEach((question, index) => {
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'card mb-3';
+                    
+                    let optionsHtml = '';
+                    if (question.qtype === 'mcq' && question.options && question.options.length > 0) {
+                        optionsHtml = `
+                            <div class="mb-3">
+                                <strong>Options:</strong>
+                                <div class="mt-2">
+                                    ${question.options.map((option, optIndex) => `
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" 
+                                                   name="question_${index}" id="option_${index}_${optIndex}" 
+                                                   value="${option}" onchange="checkAnswer(${index}, '${option}', '${question.answer}')">
+                                            <label class="form-check-label" for="option_${index}_${optIndex}">
+                                                ${option}
+                                            </label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div id="feedback_${index}" class="mt-2" style="display: none;"></div>
+                            </div>
+                        `;
+                    }
+                    
+                    questionDiv.innerHTML = `
+                        <div class="card-body">
+                            <h6 class="card-title">Question ${index + 1}</h6>
+                            <p class="card-text">${question.question_text}</p>
+                            ${optionsHtml}
+                            <div class="alert alert-info" id="answer_${index}" style="display: none;">
+                                <strong>Correct Answer:</strong> ${question.answer}
+                            </div>
+                            <small class="text-muted">
+                                Type: ${question.qtype.toUpperCase()} | 
+                                Difficulty: ${question.difficulty}
+                            </small>
+                        </div>
+                    `;
+                    container.appendChild(questionDiv);
+                });
+            } else {
+                container.innerHTML = '<p class="text-muted">No questions available for this document.</p>';
+            }
+            
+            new bootstrap.Modal(document.getElementById('questionsModal')).show();
+        })
+        .catch(error => {
+            console.error('Error loading questions:', error);
+            showAlert('Failed to load questions!', 'danger');
+        });
+}
+
+function studyFlashcards(docId) {
+    currentDocumentId = docId;
+    console.log('Loading flashcards for document:', docId);
+    
+    fetch(`/documents/all-flashcards/${docId}/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        }
+    })
+        .then(response => {
+            console.log('Flashcards response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Flashcards data:', data);
+            const container = document.getElementById('flashcardsContainer');
+            container.innerHTML = '';
+            
+            if (data && data.flashcards && data.flashcards.length > 0) {
+                // Check if all flashcards have generic content
+                const hasGenericContent = data.flashcards.every(card => 
+                    card.term === 'Study Material' || 
+                    card.term === 'Document Analysis' ||
+                    card.definition.includes('Educational content')
+                );
+                
+                if (hasGenericContent) {
+                    container.innerHTML = '<p class="text-muted">Flashcards have generic content. Try regenerating flashcards using the "Generate Flashcards" button to get better results from your document content.</p>';
+                    new bootstrap.Modal(document.getElementById('flashcardsModal')).show();
+                    return;
+                }
+                
+                let currentCard = 0;
+                const flashcards = data.flashcards;
+                
+                function showCard() {
+                    const card = flashcards[currentCard];
+                    container.innerHTML = `
+                        <div class="text-center">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">${card.term || 'No term content'}</h5>
+                                    <div id="back_${currentCard}" style="display: none;">
+                                        <hr>
+                                        <p class="card-text">${card.definition || 'No definition content'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-primary" onclick="showAnswer()">Show Answer</button>
+                                <button class="btn btn-success" onclick="nextCard()">Next Card</button>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">Card ${currentCard + 1} of ${flashcards.length}</small>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                window.showAnswer = function() {
+                    document.getElementById(`back_${currentCard}`).style.display = 'block';
+                };
+                
+                window.nextCard = function() {
+                    currentCard = (currentCard + 1) % flashcards.length;
+                    showCard();
+                };
+                
+                showCard();
+            } else {
+                container.innerHTML = '<p class="text-muted">No flashcards available for this document. Try generating flashcards using the "Generate Flashcards" button in the AI Document Actions section.</p>';
+            }
+            
+            new bootstrap.Modal(document.getElementById('flashcardsModal')).show();
+        })
+        .catch(error => {
+            console.error('Error loading flashcards:', error);
+            showAlert('Failed to load flashcards: ' + error.message, 'danger');
+        });
+}
+
+function checkAnswer(questionIndex, selectedAnswer, correctAnswer) {
+    const feedbackDiv = document.getElementById(`feedback_${questionIndex}`);
+    const answerDiv = document.getElementById(`answer_${questionIndex}`);
+    
+    if (selectedAnswer === correctAnswer) {
+        feedbackDiv.innerHTML = '<div class="alert alert-success">Correct!</div>';
+    } else {
+        feedbackDiv.innerHTML = '<div class="alert alert-danger">Incorrect!</div>';
+        answerDiv.style.display = 'block';
+    }
+    feedbackDiv.style.display = 'block';
+}
+
+async function deleteDocument(docId) {
+    if (confirm('Are you sure you want to delete this document?')) {
+        try {
+            const response = await fetch(`/documents/delete/${docId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('Document deleted successfully!', 'success');
+                loadDocuments();
+            } else {
+                showAlert('Failed to delete document: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            showAlert('Failed to delete document!', 'danger');
+        }
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    const chatContainer = document.getElementById('chatContainer');
+    
+    // Add user message
+    chatContainer.innerHTML += `
+        <div class="mb-2">
+            <strong>You:</strong> ${message}
+        </div>
+    `;
+    
+    input.value = '';
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    try {
+        const response = await fetch('/documents/chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ message: message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            chatContainer.innerHTML += `
+                <div class="mb-2">
+                    <strong>AI:</strong> ${data.response}
+                </div>
+            `;
+        } else {
+            chatContainer.innerHTML += `
+                <div class="mb-2 text-danger">
+                    <strong>AI:</strong> Sorry, I couldn't process your request.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        chatContainer.innerHTML += `
+            <div class="mb-2 text-danger">
+                <strong>AI:</strong> Sorry, there was an error processing your request.
+            </div>
+        `;
+    }
+    
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// File upload handling
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const fileInput = document.getElementById('fileInput');
+    const files = fileInput.files;
+    
+    console.log('Upload form submitted with', files.length, 'files');
+    
+    if (files.length === 0) {
+        showAlert('Please select at least one file to upload.', 'warning');
+        return;
+    }
+    
+    for (let i = 0; i < files.length; i++) {
+        console.log('Adding file to formData:', files[i].name);
+        formData.append('file', files[i]);
+    }
+    
+    const progressBar = document.querySelector('#uploadProgress .progress-bar');
+    const progressDiv = document.getElementById('uploadProgress');
+    
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    
+    try {
+        console.log('Sending upload request to:', `/documents/preparations/${currentPreparationId}/upload/`);
+        const response = await fetch(`/documents/preparations/${currentPreparationId}/upload/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData
+        });
+        
+        console.log('Upload response status:', response.status);
+        const data = await response.json();
+        console.log('Upload response data:', data);
+        
+        if (data.success) {
+            showAlert('Files uploaded successfully!', 'success');
+            fileInput.value = '';
+            loadDocuments();
+        } else {
+            showAlert('Failed to upload files: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        console.error('Error uploading files:', error);
+        showAlert('Failed to upload files!', 'danger');
+    } finally {
+        progressDiv.style.display = 'none';
+    }
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Load preparation stats
+function loadPreparationStats() {
+    fetch(`/documents/preparations/${currentPreparationId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('totalDocuments').textContent = data.documents_count || 0;
+            document.getElementById('totalQuestions').textContent = data.total_questions || 0;
+            document.getElementById('totalFlashcards').textContent = data.total_flashcards || 0;
+            document.getElementById('progressPercentage').textContent = data.progress_percentage || '0%';
+        })
+        .catch(error => {
+            console.error('Error loading preparation stats:', error);
+        });
+}
+
+// Load documents
+function loadDocuments() {
+    console.log('Loading documents for preparation:', currentPreparationId);
+    fetch(`/documents/preparations/${currentPreparationId}/documents/`)
+        .then(response => {
+            console.log('Documents response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Documents data:', data);
+            const documentsList = document.getElementById('documentsList');
+            documentsList.innerHTML = '';
+            
+            if (data && data.length > 0) {
+                console.log('Found', data.length, 'documents');
+                data.forEach(doc => {
+                    console.log('Processing document:', doc);
+                    const docCard = createDocumentCard(doc);
+                    documentsList.appendChild(docCard);
+                });
+            } else {
+                console.log('No documents found');
+                documentsList.innerHTML = '<p class="text-muted">No documents uploaded yet.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading documents:', error);
+        });
+}
+
+// Create document card
+function createDocumentCard(doc) {
+    const card = document.createElement('div');
+    card.className = 'card mb-3';
+    card.innerHTML = `
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="card-title mb-1">${doc.name}</h6>
+                    <small class="text-muted">${doc.doc_type.toUpperCase()} • Uploaded ${new Date(doc.uploaded_at).toLocaleDateString()}</small>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="openDocumentActions(${doc.id})">
+                        <i class="fas fa-magic"></i> Actions
+                    </button>
+                    <button class="btn btn-sm btn-outline-info me-2" onclick="viewQuestions(${doc.id})">
+                        <i class="fas fa-question-circle"></i> Questions
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning me-2" onclick="studyFlashcards(${doc.id})">
+                        <i class="fas fa-lightbulb"></i> Flashcards
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument(${doc.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+// Load stats on page load
+loadPreparationStats();
+
+// Load documents on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDocuments();
+});
+</script>
+{% endblock %} 
