@@ -24,12 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-h&p-&xn+uwgm%@0#cynuij$&t2b9&x9k=oladu0^+wtkyjsq-a'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-h&p-&xn+uwgm%@0#cynuij$&t2b9&x9k=oladu0^+wtkyjsq-a')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -81,12 +81,18 @@ WSGI_APPLICATION = 'examassist.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# For Vercel deployment, we'll use SQLite for now
+# In production, consider using PostgreSQL with a service like Neon or Supabase
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# If you want to use PostgreSQL in production, uncomment and configure:
+# import dj_database_url
+# DATABASES['default'] = dj_database_url.parse(os.getenv('DATABASE_URL', ''))
 
 
 # Password validation
@@ -130,6 +136,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # Media files (User uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# For Vercel deployment
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # Channels
 ASGI_APPLICATION = 'examassist.asgi.application'

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DocumentUploadView, DocumentListView, DocumentDeleteView, SummarizeDocumentView, GenerateQuestionsView, GenerateFlashcardsView, ListSummariesView, ListQuestionsView, ListFlashcardsView, ProgressView, ExtractRoutineEventsView, ChatView, DashboardStatsView, ExtractEventsFromImageView, ClearEventsView, CreateExamPreparationView, ExamPreparationListAPIView, ExamPreparationDetailAPIView, ExamPreparationDocumentsView, UploadToExamPreparationView, DeleteExamPreparationView
+from .views import DocumentUploadView, DocumentListView, DocumentDeleteView, SummarizeDocumentView, GenerateQuestionsView, GenerateFlashcardsView, ListSummariesView, ListQuestionsView, ListFlashcardsView, ProgressView, ExtractRoutineEventsView, ChatView, DashboardStatsView, ExtractEventsFromImageView, ClearEventsView, CreateManualEventView, DeleteIndividualEventView, CreateExamPreparationView, ExamPreparationListAPIView, ExamPreparationDetailAPIView, ExamPreparationDocumentsView, UploadToExamPreparationView, DeleteExamPreparationView, QuestionAnalysisView, QuestionAnalysisListView, ViewSavedAnalysisView
 
 urlpatterns = [
     path('upload/', DocumentUploadView.as_view(), name='document-upload'),
@@ -14,6 +14,8 @@ urlpatterns = [
     path('extract-events/', ExtractEventsFromImageView.as_view(), name='extract-events'),
     path('extract-events-document/<int:pk>/', ExtractRoutineEventsView.as_view(), name='extract-events-document'),
     path('clear-events/', ClearEventsView.as_view(), name='clear-events'),
+    path('create-manual-event/', CreateManualEventView.as_view(), name='create-manual-event'),
+    path('delete-event/<int:event_id>/', DeleteIndividualEventView.as_view(), name='delete-individual-event'),
     path('chat/', ChatView.as_view(), name='chat'),
     path('stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('preparations/create/', CreateExamPreparationView.as_view(), name='create-exam-preparation'),
@@ -22,4 +24,7 @@ urlpatterns = [
     path('preparations/<int:prep_id>/documents/', ExamPreparationDocumentsView.as_view(), name='exam-preparation-documents'),
     path('preparations/<int:prep_id>/upload/', UploadToExamPreparationView.as_view(), name='upload-to-exam-preparation'),
     path('preparations/<int:prep_id>/delete/', DeleteExamPreparationView.as_view(), name='exam-preparation-delete'),
+    path('preparations/<int:prep_id>/question-analysis/', QuestionAnalysisView.as_view(), name='question-analysis'),
+    path('preparations/<int:prep_id>/question-analyses/', QuestionAnalysisListView.as_view(), name='question-analysis-list'),
+    path('preparations/<int:prep_id>/view-saved-analysis/', ViewSavedAnalysisView.as_view(), name='view-saved-analysis'),
 ] 

@@ -41,23 +41,31 @@
 
             <!-- Stats Cards -->
             <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-white" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
                         <div class="card-body">
-                            <h5 class="card-title">Documents</h5>
-                            <p class="card-text display-6" id="totalDocuments">0</p>
+                            <h5 class="card-title">Reading Materials</h5>
+                            <p class="card-text display-6" id="readingDocuments">0</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Previous Questions</h5>
+                            <p class="card-text display-6" id="questionDocuments">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="card text-white" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
                         <div class="card-body">
-                            <h5 class="card-title">Questions</h5>
+                            <h5 class="card-title">Generated Questions</h5>
                             <p class="card-text display-6" id="totalQuestions">0</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-white" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
                         <div class="card-body">
                             <h5 class="card-title">Flashcards</h5>
@@ -65,7 +73,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Q&A Analysis</h5>
+                            <p class="card-text display-6" id="totalAnalyses">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="card text-white" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">
                         <div class="card-body">
                             <h5 class="card-title">Progress</h5>
@@ -89,6 +105,13 @@
                                         <div class="card-body d-flex flex-column p-3">
                                             <h6 class="card-title text-primary mb-2"><i class="fas fa-upload me-2"></i>Upload Materials</h6>
                                             <form id="uploadForm" enctype="multipart/form-data" class="flex-grow-1 d-flex flex-column">
+                                                <div class="mb-2">
+                                                    <label class="form-label small">Document Type:</label>
+                                                    <select class="form-select form-select-sm" id="documentCategory" name="category" required>
+                                                        <option value="reading">Reading Material</option>
+                                                        <option value="questions">Previous Year Questions</option>
+                                                    </select>
+                                                </div>
                                                 <div class="mb-2">
                                                     <input type="file" class="form-control form-control-sm" id="fileInput" name="file" multiple>
                                                     <small class="text-muted">PDF, DOCX, TXT, Images</small>
@@ -123,21 +146,46 @@
                 </div>
             </div>
 
-            <!-- Your Documents Section -->
+            <!-- Reading Materials Section -->
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card feature-card">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Your Documents</h5>
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-book me-2"></i>Reading Materials</h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="performQuestionAnalysis()">
+                                <i class="fas fa-brain me-1"></i>Question Analysis
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="viewSavedAnalysis()">
+                                <i class="fas fa-eye me-1"></i>View Analysis
+                            </button>
+                        </div>
                         </div>
                         <div class="card-body">
-                            <div id="documentsList">
-                                <!-- Documents will be loaded here -->
+                            <div id="readingDocumentsList">
+                                <!-- Reading documents will be loaded here -->
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Previous Year Questions Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card feature-card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Previous Year Questions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="questionDocumentsList">
+                                <!-- Question documents will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -152,15 +200,6 @@
             </div>
             <div class="modal-body">
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <h6 class="card-title">Generate Summary</h6>
-                                <p class="card-text">Create a concise summary of the document</p>
-                                <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
-                            </div>
-                        </div>
-                    </div>
                     <div class="col-md-6">
                         <div class="card mb-3">
                             <div class="card-body">
@@ -286,29 +325,6 @@ function openDocumentActions(docId) {
     new bootstrap.Modal(document.getElementById('documentModal')).show();
 }
 
-async function generateSummary() {
-    if (!currentDocumentId) return;
-    
-    try {
-        const response = await fetch(`/documents/summarize/${currentDocumentId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Summary generated successfully!', 'success');
-        } else {
-            showAlert('Failed to generate summary: ' + data.error, 'danger');
-        }
-    } catch (error) {
-        console.error('Error generating summary:', error);
-        showAlert('Failed to generate summary!', 'danger');
-    }
-}
 
 async function generateQuestions() {
     if (!currentDocumentId) return;
@@ -511,6 +527,15 @@ function studyFlashcards(docId) {
         });
 }
 
+function readDocument(fileUrl) {
+    if (fileUrl) {
+        // Open the PDF in a new tab
+        window.open(fileUrl, '_blank');
+    } else {
+        showAlert('Document file not available for reading.', 'warning');
+    }
+}
+
 function checkAnswer(questionIndex, selectedAnswer, correctAnswer) {
     const feedbackDiv = document.getElementById(`feedback_${questionIndex}`);
     const answerDiv = document.getElementById(`answer_${questionIndex}`);
@@ -610,6 +635,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
     
     const formData = new FormData();
     const fileInput = document.getElementById('fileInput');
+    const categorySelect = document.getElementById('documentCategory');
     const files = fileInput.files;
     
     console.log('Upload form submitted with', files.length, 'files');
@@ -618,6 +644,9 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         showAlert('Please select at least one file to upload.', 'warning');
         return;
     }
+    
+    // Add category to form data
+    formData.append('category', categorySelect.value);
     
     for (let i = 0; i < files.length; i++) {
         console.log('Adding file to formData:', files[i].name);
@@ -679,13 +708,29 @@ function loadPreparationStats() {
     fetch(`/documents/preparations/${currentPreparationId}/`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('totalDocuments').textContent = data.documents_count || 0;
+            document.getElementById('readingDocuments').textContent = data.reading_documents_count || 0;
+            document.getElementById('questionDocuments').textContent = data.question_documents_count || 0;
             document.getElementById('totalQuestions').textContent = data.total_questions || 0;
             document.getElementById('totalFlashcards').textContent = data.total_flashcards || 0;
             document.getElementById('progressPercentage').textContent = data.progress_percentage || '0%';
+            
+            // Load Q&A analysis count
+            loadQAAnalysisCount();
         })
         .catch(error => {
             console.error('Error loading preparation stats:', error);
+        });
+}
+
+// Load Q&A analysis count
+function loadQAAnalysisCount() {
+    fetch(`/documents/preparations/${currentPreparationId}/question-analyses/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('totalAnalyses').textContent = data.length || 0;
+        })
+        .catch(error => {
+            console.error('Error loading Q&A analysis count:', error);
         });
 }
 
@@ -699,19 +744,35 @@ function loadDocuments() {
         })
         .then(data => {
             console.log('Documents data:', data);
-            const documentsList = document.getElementById('documentsList');
-            documentsList.innerHTML = '';
             
-            if (data && data.length > 0) {
-                console.log('Found', data.length, 'documents');
-                data.forEach(doc => {
-                    console.log('Processing document:', doc);
+            // Separate documents by category
+            const readingDocs = data.filter(doc => doc.category === 'reading');
+            const questionDocs = data.filter(doc => doc.category === 'questions');
+            
+            // Load reading documents
+            const readingDocumentsList = document.getElementById('readingDocumentsList');
+            readingDocumentsList.innerHTML = '';
+            
+            if (readingDocs.length > 0) {
+                readingDocs.forEach(doc => {
                     const docCard = createDocumentCard(doc);
-                    documentsList.appendChild(docCard);
+                    readingDocumentsList.appendChild(docCard);
                 });
             } else {
-                console.log('No documents found');
-                documentsList.innerHTML = '<p class="text-muted">No documents uploaded yet.</p>';
+                readingDocumentsList.innerHTML = '<p class="text-muted">No reading materials uploaded yet.</p>';
+            }
+            
+            // Load question documents
+            const questionDocumentsList = document.getElementById('questionDocumentsList');
+            questionDocumentsList.innerHTML = '';
+            
+            if (questionDocs.length > 0) {
+                questionDocs.forEach(doc => {
+                    const docCard = createDocumentCard(doc);
+                    questionDocumentsList.appendChild(docCard);
+                });
+            } else {
+                questionDocumentsList.innerHTML = '<p class="text-muted">No previous year questions uploaded yet.</p>';
             }
         })
         .catch(error => {
@@ -723,6 +784,39 @@ function loadDocuments() {
 function createDocumentCard(doc) {
     const card = document.createElement('div');
     card.className = 'card mb-3';
+    
+    // For question documents, only show Read and Delete buttons
+    let buttonsHtml = '';
+    if (doc.category === 'questions') {
+        buttonsHtml = `
+            <button class="btn btn-sm btn-outline-success me-2" onclick="readDocument('${doc.file_url}')" title="Read PDF">
+                <i class="fas fa-eye"></i> Read
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument(${doc.id})">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+    } else {
+        // For reading materials, show all buttons
+        buttonsHtml = `
+            <button class="btn btn-sm btn-outline-success me-2" onclick="readDocument('${doc.file_url}')" title="Read PDF">
+                <i class="fas fa-eye"></i> Read
+            </button>
+            <button class="btn btn-sm btn-outline-primary me-2" onclick="openDocumentActions(${doc.id})">
+                <i class="fas fa-magic"></i> Actions
+            </button>
+            <button class="btn btn-sm btn-outline-info me-2" onclick="viewQuestions(${doc.id})">
+                <i class="fas fa-question-circle"></i> Questions
+            </button>
+            <button class="btn btn-sm btn-outline-warning me-2" onclick="studyFlashcards(${doc.id})">
+                <i class="fas fa-lightbulb"></i> Flashcards
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument(${doc.id})">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+    }
+    
     card.innerHTML = `
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -731,23 +825,173 @@ function createDocumentCard(doc) {
                     <small class="text-muted">${doc.doc_type.toUpperCase()} • Uploaded ${new Date(doc.uploaded_at).toLocaleDateString()}</small>
                 </div>
                 <div>
-                    <button class="btn btn-sm btn-outline-primary me-2" onclick="openDocumentActions(${doc.id})">
-                        <i class="fas fa-magic"></i> Actions
-                    </button>
-                    <button class="btn btn-sm btn-outline-info me-2" onclick="viewQuestions(${doc.id})">
-                        <i class="fas fa-question-circle"></i> Questions
-                    </button>
-                    <button class="btn btn-sm btn-outline-warning me-2" onclick="studyFlashcards(${doc.id})">
-                        <i class="fas fa-lightbulb"></i> Flashcards
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument(${doc.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    ${buttonsHtml}
                 </div>
             </div>
         </div>
     `;
     return card;
+}
+
+// Question Analysis functionality
+async function performQuestionAnalysis() {
+    try {
+        // Show progress indicator
+        const analysisButton = document.querySelector('button[onclick="performQuestionAnalysis()"]');
+        const originalText = analysisButton.innerHTML;
+        analysisButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Analyzing...';
+        analysisButton.disabled = true;
+        
+        showAlert('Starting question analysis... This may take 60-120 seconds for comprehensive results with multiple questions.', 'info');
+        
+        const response = await fetch(`/documents/preparations/${currentPreparationId}/question-analysis/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Question analysis completed successfully!', 'success');
+            
+            // Show the formatted response in a modal
+            const modalHtml = `
+                <div class="modal fade" id="questionAnalysisModal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Question Analysis Results</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <strong>Response Length:</strong> ${data.response_length} characters
+                                </div>
+                                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6;">${data.formatted_response}</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" onclick="copyAnalysisResponse()">Copy to Clipboard</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('questionAnalysisModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('questionAnalysisModal'));
+            modal.show();
+            
+            // Store response for copying
+            window.currentAnalysisResponse = data.formatted_response;
+            
+        } else {
+            showAlert('Question analysis failed: ' + data.error, 'danger');
+        }
+    } catch (error) {
+        console.error('Error performing question analysis:', error);
+        showAlert('Failed to perform question analysis!', 'danger');
+    } finally {
+        // Restore button
+        const analysisButton = document.querySelector('button[onclick="performQuestionAnalysis()"]');
+        analysisButton.innerHTML = '<i class="fas fa-brain me-1"></i>Question Analysis';
+        analysisButton.disabled = false;
+    }
+}
+
+function copyAnalysisResponse() {
+    if (window.currentAnalysisResponse) {
+        navigator.clipboard.writeText(window.currentAnalysisResponse).then(() => {
+            showAlert('Analysis response copied to clipboard!', 'success');
+        }).catch(() => {
+            showAlert('Failed to copy to clipboard', 'error');
+        });
+    }
+}
+
+// View saved analysis functionality
+async function viewSavedAnalysis() {
+    try {
+        const response = await fetch(`/documents/preparations/${currentPreparationId}/view-saved-analysis/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show the saved analysis in a modal
+            const modalHtml = `
+                <div class="modal fade" id="savedAnalysisModal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Saved Question Analysis</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <strong>Analysis Date:</strong> ${new Date(data.created_at).toLocaleString()}
+                                </div>
+                                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6;">${data.formatted_response}</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" onclick="copySavedAnalysisResponse()">Copy to Clipboard</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('savedAnalysisModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('savedAnalysisModal'));
+            modal.show();
+            
+            // Store response for copying
+            window.currentSavedAnalysisResponse = data.formatted_response;
+            
+        } else {
+            showAlert('No saved analysis found. Please run Question Analysis first.', 'warning');
+        }
+    } catch (error) {
+        console.error('Error viewing saved analysis:', error);
+        showAlert('Failed to load saved analysis!', 'danger');
+    }
+}
+
+function copySavedAnalysisResponse() {
+    if (window.currentSavedAnalysisResponse) {
+        navigator.clipboard.writeText(window.currentSavedAnalysisResponse).then(() => {
+            showAlert('Saved analysis response copied to clipboard!', 'success');
+        }).catch(() => {
+            showAlert('Failed to copy to clipboard', 'error');
+        });
+    }
 }
 
 // Load stats on page load
@@ -756,6 +1000,7 @@ loadPreparationStats();
 // Load documents on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadDocuments();
+    loadQAAnalyses();
 });
 </script>
 {% endblock %} 

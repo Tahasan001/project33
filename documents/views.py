@@ -32,9 +32,9 @@ import os
 import mimetypes
 from pathlib import Path
 import google.generativeai as genai
-from .models import Document, Summary, Question, Flashcard, Progress, RoutineEvent, ExamPreparation
-from .serializers import DocumentSerializer, SummarySerializer, QuestionSerializer, FlashcardSerializer, ProgressSerializer, RoutineEventSerializer, ExamPreparationSerializer
-from .utils import extract_text
+from .models import Document, Summary, Question, Flashcard, Progress, RoutineEvent, ExamPreparation, QuestionAnalysis
+from .serializers import DocumentSerializer, SummarySerializer, QuestionSerializer, FlashcardSerializer, ProgressSerializer, RoutineEventSerializer, ExamPreparationSerializer, QuestionAnalysisSerializer
+from .utils import extract_text, format_math_and_markdown
 import re
 import base64
 from PIL import Image
@@ -53,11 +53,55 @@ def clean_json_response(text):
     if text.endswith('```'):
         text = text[:-3]
     
-    # Replace single quotes with double quotes (careful: only for keys/values)
-    text = re.sub(r"(?<!\\\\)'", '"', text)
+    # Remove any text before the first '[' or '{'
+    first_bracket = text.find('[')
+    first_brace = text.find('{')
     
-    # Remove trailing commas before closing brackets/braces
-    text = re.sub(r',([\\s]*[}\\]])', r'\\1', text)
+    if first_bracket != -1 and (first_brace == -1 or first_bracket < first_brace):
+        text = text[first_bracket:]
+    elif first_brace != -1:
+        text = text[first_brace:]
+    
+    # Remove any text after the last ']' or '}'
+    last_bracket = text.rfind(']')
+    last_brace = text.rfind('}')
+    
+    if last_bracket != -1 and (last_brace == -1 or last_bracket > last_brace):
+        text = text[:last_bracket + 1]
+    elif last_brace != -1:
+        text = text[:last_brace + 1]
+    
+    # Fix the specific JSON parsing issue by properly handling quotes
+    # First, let's try a different approach - find and fix malformed JSON strings
+    
+    # Remove any text that's not part of the JSON structure
+    # Find the main JSON array/object
+    if '[' in text and ']' in text:
+        start = text.find('[')
+        end = text.rfind(']')
+        if start < end:
+            text = text[start:end+1]
+    
+    # Fix the specific issue with improperly escaped quotes
+    # The problem is that quotes inside string values are being escaped incorrectly
+    def fix_json_strings(match):
+        key = match.group(1)
+        value = match.group(2)
+        
+        # Clean up the value by removing incorrect escaping
+        value = value.replace('\\"', '"')  # Remove incorrect escaping
+        value = value.replace('"', '\\"')  # Properly escape quotes
+        value = value.replace('\n', '\\n')  # Escape newlines
+        value = value.replace('\r', '\\r')  # Escape carriage returns
+        value = value.replace('\t', '\\t')  # Escape tabs
+        
+        return f'"{key}": "{value}"'
+    
+    # Apply the fix to key-value pairs
+    text = re.sub(r'"([^"]+)":\s*"([^"]*(?:\\.[^"]*)*)"', fix_json_strings, text)
+    
+    # Remove trailing commas
+    text = re.sub(r',(\s*[}\]])', r'\1', text)
     
     # If the response is truncated, try to find the last complete object
     if text.count('{') > text.count('}'):
@@ -1022,6 +1066,82 @@ class ClearEventsView(APIView):
                 'error': 'Failed to clear events'
             }, status=500)
 
+class CreateManualEventView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            event_type = request.data.get('event_type', '').strip()
+            title = request.data.get('title', '').strip()
+            event_date = request.data.get('date', '').strip()
+            description = request.data.get('description', '').strip()
+            
+            # Validate required fields
+            if not event_type:
+                return Response({'error': 'Event type is required'}, status=400)
+            if not title:
+                return Response({'error': 'Title is required'}, status=400)
+            if not event_date:
+                return Response({'error': 'Date is required'}, status=400)
+            
+            # Parse and validate date
+            try:
+                from datetime import datetime
+                parsed_date = datetime.strptime(event_date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+            
+            # Create the event
+            event = RoutineEvent.objects.create(
+                user=request.user,
+                document=None,  # Manual events don't have associated documents
+                event_type=event_type,
+                title=title,
+                date=parsed_date,
+                description=description
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Event created successfully',
+                'event': {
+                    'id': event.id,
+                    'title': event.title,
+                    'date': event.date.strftime('%Y-%m-%d'),
+                    'event_type': event.event_type,
+                    'description': event.description
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Error creating manual event: {str(e)}")
+            return Response({
+                'success': False,
+                'error': 'Failed to create event'
+            }, status=500)
+
+class DeleteIndividualEventView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def delete(self, request, event_id):
+        try:
+            event = RoutineEvent.objects.get(id=event_id, user=request.user)
+            event_title = event.title
+            event.delete()
+            
+            return Response({
+                'success': True,
+                'message': f'Event "{event_title}" deleted successfully'
+            })
+        except RoutineEvent.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=404)
+        except Exception as e:
+            logger.error(f"Error deleting event: {str(e)}")
+            return Response({
+                'success': False,
+                'error': 'Failed to delete event'
+            }, status=500)
+
 class CreateExamPreparationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -1098,6 +1218,7 @@ class UploadToExamPreparationView(APIView):
         try:
             preparation = ExamPreparation.objects.get(id=prep_id, user=request.user)
             files = request.FILES.getlist('file')
+            category = request.data.get('category', 'reading')  # Default to reading material
             
             if not files:
                 return Response({'error': 'No files provided'}, status=400)
@@ -1122,12 +1243,14 @@ class UploadToExamPreparationView(APIView):
                     file=file,
                     name=file.name,
                     doc_type=doc_type,
+                    category=category,
                     exam_preparation=preparation
                 )
                 uploaded_files.append({
                     'id': document.id,
                     'name': document.name,
-                    'doc_type': document.doc_type
+                    'doc_type': document.doc_type,
+                    'category': document.category
                 })
             
             return Response({
@@ -1287,3 +1410,222 @@ class StatsView(LoginRequiredMixin, ListView):
             })
         
         return list(reversed(monthly_data))  # Most recent first
+
+
+class QuestionAnalysisListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, prep_id):
+        try:
+            preparation = ExamPreparation.objects.get(id=prep_id, user=request.user)
+            analyses = QuestionAnalysis.objects.filter(exam_preparation=preparation, user=request.user).order_by('-created_at')
+            serializer = QuestionAnalysisSerializer(analyses, many=True)
+            return Response(serializer.data)
+        except ExamPreparation.DoesNotExist:
+            return Response({'error': 'Exam preparation not found'}, status=404)
+        except Exception as e:
+            logger.error(f"Error retrieving question analyses: {str(e)}")
+            return Response({'error': 'Failed to retrieve question analyses'}, status=500)
+
+class ViewSavedAnalysisView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, prep_id):
+        """Get the most recent saved analysis response for an exam preparation"""
+        try:
+            preparation = ExamPreparation.objects.get(id=prep_id, user=request.user)
+            analysis = QuestionAnalysis.objects.filter(
+                exam_preparation=preparation, 
+                user=request.user,
+                full_analysis_response__isnull=False
+            ).order_by('-created_at').first()
+            
+            if not analysis:
+                return Response({'error': 'No saved analysis found'}, status=404)
+            
+            return Response({
+                'success': True,
+                'analysis_id': analysis.id,
+                'formatted_response': analysis.full_analysis_response,
+                'response_length': len(analysis.full_analysis_response),
+                'created_at': analysis.created_at.isoformat()
+            })
+        except ExamPreparation.DoesNotExist:
+            return Response({'error': 'Exam preparation not found'}, status=404)
+        except Exception as e:
+            logger.error(f"Error retrieving saved analysis: {str(e)}")
+            return Response({'error': 'Failed to retrieve saved analysis'}, status=500)
+
+class QuestionAnalysisView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, prep_id):
+        """Perform question analysis with prettier formatting"""
+        try:
+            preparation = ExamPreparation.objects.get(id=prep_id, user=request.user)
+            
+            # Get reading and question documents
+            reading_docs = preparation.documents.filter(category='reading')
+            question_docs = preparation.documents.filter(category='questions')
+            
+            if not reading_docs.exists() or not question_docs.exists():
+                return Response({'error': 'Both reading materials and questions are required'}, status=400)
+            
+            # Extract text from documents
+            reading_text = ""
+            for doc in reading_docs:
+                try:
+                    text = extract_text(doc.file.path, doc.doc_type)
+                    reading_text += f"\n\n--- {doc.name} ---\n{text}"
+                except Exception as e:
+                    logger.error(f"Error extracting text from reading doc {doc.id}: {str(e)}")
+            
+            questions_text = ""
+            for doc in question_docs:
+                try:
+                    text = extract_text(doc.file.path, doc.doc_type)
+                    questions_text += f"\n\n--- {doc.name} ---\n{text}"
+                except Exception as e:
+                    logger.error(f"Error extracting text from question doc {doc.id}: {str(e)}")
+            
+            # Use AI to analyze questions and find answers from reading materials
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            
+            prompt = f"""Analyze these exam questions and provide answers based on the study materials.
+
+STUDY MATERIALS:
+{reading_text[:8000]}
+
+QUESTIONS:
+{questions_text[:8000]}
+
+             Your task is to:
+            1. Identify questions from the previous year questions that are RELATED TO or BASED ON the concepts covered in the reading materials
+            2. For each relevant question, provide a comprehensive answer using the knowledge from the reading materials
+            3. Include questions that cover similar topics, concepts, or subject areas as the reading materials
+            4. Use the reading materials as a foundation to explain concepts and provide detailed answers
+            5. If there is any information about where the question is from like the year, question number, section, etc, include it in the response
+            6. Generate at least 5-8 relevant questions if possible
+            7. Focus on questions that test understanding of the same subject matter or related statistical/mathematical concepts
+            8. DO NOT comment on whether the question can be solved by the study material - just provide the answer
+            9. Do not derive questions from study material solve only questions of the questions document
+            
+            FORMAT YOUR RESPONSE AS FOLLOWS:
+            
+            # QUESTION ANALYSIS RESULTS
+            
+            ## Question 1
+            Question: [Write the exact question text here] 
+            [year, question number, section, etc]
+            
+            
+            
+            Answer: 
+            [Provide a comprehensive, step-by-step answer based on the reading materials. Include calculations, explanations, and interpretations where applicable.]
+            
+            ---
+            
+            ## Question 2
+            Question: [Write the exact question text here] 
+            [year, question number, section, etc]
+            
+            
+            
+            Answer: 
+            [Provide a comprehensive, step-by-step answer based on the reading materials. Include calculations, explanations, and interpretations where applicable.]
+            
+            ---
+            
+            [Continue for all relevant questions...]
+            
+             REQUIREMENTS: 
+             - Focus on questions that are related to or based on the concepts covered in the reading materials
+             - Include questions that test similar topics, statistical concepts, or mathematical principles
+             - Use the reading materials as a foundation to explain and solve related questions
+             - Provide detailed, comprehensive answers using knowledge from the reading materials
+             - Include at least 5-8 relevant questions if possible
+             - Use clear formatting with headers and separators
+             - Provide step-by-step solutions for calculation problems
+             - Include explanations and interpretations for statistical concepts
+             - Apply concepts from the reading materials to solve related questions
+             - Make the response easy to read and study from
+             - Don't limit to only questions with direct answers - include questions on related topics
+             - NEVER comment on whether the question can be solved by the study material
+             - Just provide the answer directly without any disclaimers about material coverage
+            """
+
+            
+            # Configure generation parameters for better responses
+            generation_config = {
+                "temperature": 0.1,  # Very low temperature for more consistent responses
+                "top_p": 0.9,
+                "top_k": 50,
+                "max_output_tokens": 16384,  # Increased token limit for comprehensive analysis
+            }
+            
+            try:
+                response = model.generate_content(
+                    prompt,
+                    generation_config=generation_config
+                )
+                
+                # Check if response is valid and has content
+                if not response:
+                    return Response({'error': 'AI service returned no response'}, status=500)
+                
+                # Handle different response types and potential errors
+                if hasattr(response, 'text') and response.text:
+                    response_text = response.text
+                elif hasattr(response, 'parts') and response.parts:
+                    # Try to extract text from parts
+                    response_text = ''.join([part.text for part in response.parts if hasattr(part, 'text') and part.text])
+                else:
+                    # Check for finish reason errors
+                    if hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'finish_reason'):
+                            if candidate.finish_reason == 2:  # SAFETY
+                                return Response({'error': 'AI response was blocked due to safety concerns. Please try with different content.'}, status=500)
+                            elif candidate.finish_reason == 3:  # RECITATION
+                                return Response({'error': 'AI response was blocked due to recitation concerns. Please try with different content.'}, status=500)
+                            elif candidate.finish_reason == 4:  # OTHER
+                                return Response({'error': 'AI response was blocked for other reasons. Please try again.'}, status=500)
+                    
+                    return Response({'error': 'AI response was empty or invalid'}, status=500)
+                
+                if not response_text.strip():
+                    return Response({'error': 'AI response was empty'}, status=500)
+                    
+            except Exception as ai_error:
+                logger.error(f"AI generation error: {str(ai_error)}")
+                return Response({'error': f'AI generation failed: {str(ai_error)}'}, status=500)
+            
+            # Format the response to convert LaTeX math and markdown to proper symbols
+            formatted_response = format_math_and_markdown(response_text)
+            
+            # Save the analysis response to database
+            analysis = QuestionAnalysis.objects.create(
+                exam_preparation=preparation,
+                user=request.user,
+                full_analysis_response=formatted_response,
+                confidence_score=0.9  # High confidence for comprehensive analysis
+            )
+            
+            # Associate related documents
+            analysis.related_documents.set(list(reading_docs) + list(question_docs))
+            
+            return Response({
+                'success': True,
+                'formatted_response': formatted_response,
+                'response_length': len(formatted_response),
+                'analysis_id': analysis.id
+            })
+            
+        except ExamPreparation.DoesNotExist:
+            return Response({'error': 'Exam preparation not found'}, status=404)
+        except Exception as e:
+            logger.error(f"Raw AI response error: {str(e)}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return Response({'error': f'Failed to get raw AI response: {str(e)}'}, status=500)

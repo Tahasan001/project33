@@ -1,10 +1,15 @@
 from rest_framework import serializers
-from .models import Document, Summary, Question, Flashcard, Progress, RoutineEvent, ExamPreparation
+from .models import Document, Summary, Question, Flashcard, Progress, RoutineEvent, ExamPreparation, QuestionAnalysis
 
 class DocumentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    
+    def get_file_url(self, obj):
+        return obj.file.url if obj.file else None
+    
     class Meta:
         model = Document
-        fields = ['id', 'name', 'doc_type', 'uploaded_at', 'processed', 'file', 'exam_preparation']
+        fields = ['id', 'name', 'doc_type', 'category', 'uploaded_at', 'processed', 'file', 'file_url', 'exam_preparation']
 
 class SummarySerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,7 +40,14 @@ class ExamPreparationSerializer(serializers.ModelSerializer):
     documents_count = serializers.ReadOnlyField()
     total_questions = serializers.ReadOnlyField()
     total_flashcards = serializers.ReadOnlyField()
+    reading_documents_count = serializers.ReadOnlyField()
+    question_documents_count = serializers.ReadOnlyField()
     
     class Meta:
         model = ExamPreparation
-        fields = ['id', 'user', 'event', 'title', 'description', 'created_at', 'updated_at', 'documents_count', 'total_questions', 'total_flashcards'] 
+        fields = ['id', 'user', 'event', 'title', 'description', 'created_at', 'updated_at', 'documents_count', 'total_questions', 'total_flashcards', 'reading_documents_count', 'question_documents_count']
+
+class QuestionAnalysisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionAnalysis
+        fields = ['id', 'exam_preparation', 'user', 'question_text', 'answer', 'related_documents', 'confidence_score', 'created_at'] 

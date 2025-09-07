@@ -1,0 +1,41 @@
+# Virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+db.sqlite3
+*.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Media files (these should be handled by a CDN in production)
+media/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md

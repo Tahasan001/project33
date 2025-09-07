@@ -4,11 +4,17 @@ from django.contrib.auth.models import User
 # Create your models here.
 
 class Document(models.Model):
+    DOCUMENT_CATEGORY_CHOICES = [
+        ('reading', 'Reading Material'),
+        ('questions', 'Previous Year Questions'),
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
     file = models.FileField(upload_to='documents/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=255)
     doc_type = models.CharField(max_length=10, choices=[('pdf', 'PDF'), ('docx', 'DOCX'), ('txt', 'TXT'), ('img', 'Image')])
+    category = models.CharField(max_length=20, choices=DOCUMENT_CATEGORY_CHOICES, default='reading')
     processed = models.BooleanField(default=False)
     exam_preparation = models.ForeignKey('ExamPreparation', on_delete=models.CASCADE, null=True, blank=True, related_name='documents')
     # Add more fields as needed (e.g., summary, extracted_text, etc.)
@@ -84,3 +90,26 @@ class ExamPreparation(models.Model):
     @property
     def total_flashcards(self):
         return sum(doc.flashcards.count() for doc in self.documents.all())
+    
+    @property
+    def reading_documents_count(self):
+        return self.documents.filter(category='reading').count()
+    
+    @property
+    def question_documents_count(self):
+        return self.documents.filter(category='questions').count()
+
+class QuestionAnalysis(models.Model):
+    exam_preparation = models.ForeignKey(ExamPreparation, on_delete=models.CASCADE, related_name='question_analyses')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question_text = models.TextField(blank=True, null=True)  # Individual question (legacy)
+    answer = models.TextField(blank=True, null=True)  # Individual answer (legacy)
+    full_analysis_response = models.TextField(blank=True, null=True)  # Complete AI analysis response
+    related_documents = models.ManyToManyField(Document, blank=True, related_name='related_analyses')
+    confidence_score = models.FloatField(default=0.0)  # AI confidence in the answer
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        if self.full_analysis_response:
+            return f"Full Analysis for {self.exam_preparation.title} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+        return f"Q&A for {self.exam_preparation.title}: {self.question_text[:50] if self.question_text else 'No question'}..."

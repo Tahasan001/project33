@@ -80,6 +80,45 @@
                             <h5 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Add Events</h5>
                         </div>
                         <div class="card-body">
+                            <!-- Manual Event Form -->
+                            <div class="mb-4" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef;">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-edit me-1"></i>Add Event Manually
+                                </h6>
+                                <form id="manualEventForm">
+                                    <div class="mb-3">
+                                        <label for="eventType" class="form-label fw-bold">Event Type</label>
+                                        <select class="form-select form-select-sm" id="eventType" required style="border-radius: 6px;">
+                                            <option value="">Select type...</option>
+                                            <option value="Exam">Exam</option>
+                                            <option value="CT">CT</option>
+                                            <option value="Quiz">Quiz</option>
+                                            <option value="Assignment">Assignment</option>
+                                            <option value="Presentation">Presentation</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="eventTitle" class="form-label fw-bold">Title</label>
+                                        <input type="text" class="form-control form-control-sm" id="eventTitle" placeholder="e.g., Database Systems Final" required style="border-radius: 6px;">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="eventDate" class="form-label fw-bold">Date</label>
+                                        <input type="date" class="form-control form-control-sm" id="eventDate" required style="border-radius: 6px;">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="eventDescription" class="form-label fw-bold">Description (Optional)</label>
+                                        <textarea class="form-control form-control-sm" id="eventDescription" rows="2" placeholder="Additional details..." style="border-radius: 6px;"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-sm w-100" style="border-radius: 6px; font-weight: 500;">
+                                        <i class="fas fa-plus me-1"></i>Add Event
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <hr class="my-3">
+                            
+                            <!-- Upload Schedule -->
                             <div class="upload-area" id="eventUploadArea" style="padding: 20px;">
                                 <i class="fas fa-image fa-2x mb-2 text-muted"></i>
                                 <h6>Upload Exam Schedule</h6>
@@ -182,9 +221,14 @@
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <span class="badge ${badgeClass} me-2">${displayType}</span>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="createExamPreparation(${event.id})" title="Create preparation page">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="createExamPreparation(${event.id})" title="Create preparation page">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteIndividualEvent(${event.id})" title="Delete event">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -274,7 +318,28 @@
         }
 
         function scrollToEvents() {
-            document.getElementById('imageUploadForm').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('eventUploadArea').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showAlert(message, type) {
+            // Create alert element
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Add to page
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
         }
 
         function clearAllEvents() {
@@ -300,6 +365,74 @@
                 });
             }
         }
+
+        async function deleteIndividualEvent(eventId) {
+            if (confirm('Are you sure you want to delete this event?')) {
+                try {
+                    const response = await fetch(`/documents/delete-event/${eventId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showAlert(data.message, 'success');
+                        loadEvents(); // Reload events
+                        loadStats(); // Reload stats
+                    } else {
+                        showAlert('Failed to delete event: ' + data.error, 'danger');
+                    }
+                } catch (error) {
+                    console.error('Error deleting event:', error);
+                    showAlert('Failed to delete event!', 'danger');
+                }
+            }
+        }
+
+        // Manual event form submission
+        document.getElementById('manualEventForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const eventType = document.getElementById('eventType').value;
+            const title = document.getElementById('eventTitle').value;
+            const date = document.getElementById('eventDate').value;
+            const description = document.getElementById('eventDescription').value;
+            
+            try {
+                const response = await fetch('/documents/create-manual-event/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        event_type: eventType,
+                        title: title,
+                        date: date,
+                        description: description
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    // Reset form
+                    document.getElementById('manualEventForm').reset();
+                    // Reload events and stats
+                    loadEvents();
+                    loadStats();
+                } else {
+                    showAlert('Failed to create event: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                console.error('Error creating manual event:', error);
+                showAlert('Failed to create event!', 'danger');
+            }
+        });
 
         // Event upload area functionality
         const eventUploadArea = document.getElementById('eventUploadArea');
