@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "examassist/wsgi.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
@@ -17,7 +17,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/examassist/wsgi.py"
+      "dest": "/api/index.py"
     }
   ],
   "env": {
