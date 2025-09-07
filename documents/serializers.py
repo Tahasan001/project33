@@ -34,7 +34,7 @@ class ProgressSerializer(serializers.ModelSerializer):
 class RoutineEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoutineEvent
-        fields = ['id', 'user', 'document', 'event_type', 'title', 'date', 'description', 'created_at']
+        fields = ['id', 'user', 'document', 'event_type', 'title', 'date', 'description', 'time', 'place', 'syllabus', 'question_pattern', 'created_at']
 
 class ExamPreparationSerializer(serializers.ModelSerializer):
     documents_count = serializers.ReadOnlyField()
